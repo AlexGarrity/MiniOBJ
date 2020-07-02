@@ -7,6 +7,7 @@ set(TEST_ENABLE FALSE CACHE BOOL "Enable unit tests")
 set(TEST_GTEST FALSE CACHE BOOL "Test that gtest is working")
 
 set(MINIOBJ_BUILD_MINFIER ON CACHE BOOL "Build the ObjMinifier program")
+set(MINIOBJ_VERBOSE ON CACHE BOOL "Build the ObjMinifier program")
 
 if (${TEST_ENABLE})
     add_subdirectory(test)

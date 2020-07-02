@@ -5,6 +5,17 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "(Windows) Launch",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/miniOBJ/Release/miniOBJ.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/miniOBJ/Release/",
+            "environment": [],
+            "externalConsole": false
+        },
+        {
             "name": "Debug",
             "type": "gdb",
             "request": "launch",

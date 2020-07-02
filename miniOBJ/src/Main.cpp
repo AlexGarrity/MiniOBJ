@@ -6,10 +6,16 @@
 
 #include "OBJ.hpp"
 
+#if defined(MINIOBJ_VERBOSE)
+    #define LOG(x) printf("%s\n", x);
+#else
+    #define LOG(x) 0;
+#endif
+
 void PrintHeader() {
     std::cout << "==================" <<
     std::endl << "   OBJ Minifier" <<
-    std::endl << "           v0.1" <<
+    std::endl << "           v0.2" <<
     std::endl << "==================" <<
     std::endl;
 }
@@ -31,13 +37,53 @@ void ParseVertex(std::string &str, std::vector<std::float_t> &vertices) {
     }
 }
 
-void ParseFace(std::string &str, std::vector<uint16_t> &indices) {
+// Just verts
+void ParseFaceV(std::string v, std::vector<uint16_t> &vIndex) {
+    LOG("face vertex")
+    vIndex.emplace_back(static_cast<uint16_t>(std::stoi(v)));
+}
+
+// Verts / Texs
+void ParseFaceVT(std::vector<std::string> v, std::vector<uint16_t> &vIndex, std::vector<uint16_t> &vTex) {
+    LOG("face vertex/texture")
+    vIndex.emplace_back(static_cast<uint16_t>(std::stoi(v[0])));
+    vTex.emplace_back(static_cast<uint16_t>(std::stoi(v[1])));
+}
+
+// Verts / / Normals
+void ParseFaceVN(std::vector<std::string> v, std::vector<uint16_t> &vIndex, std::vector<uint16_t> &vNorm) {
+    LOG("face vertex//normal")
+    vIndex.emplace_back(static_cast<uint16_t>(std::stoi(v[0])));
+    vNorm.emplace_back(static_cast<uint16_t>(std::stoi(v[2])));
+    
+}
+
+// Verts / Texs / Normals
+void ParseFaceVTN(
+    std::vector<std::string> v, std::vector<uint16_t> &vIndex,
+    std::vector<uint16_t> &vTex, std::vector<uint16_t> &vNorm) 
+{
+    LOG("face vertex/texture/normal")
+    vIndex.emplace_back(static_cast<uint16_t>(std::stoi(v[0])));
+    vTex.emplace_back(static_cast<uint16_t>(std::stoi(v[1])));
+    vNorm.emplace_back(static_cast<uint16_t>(std::stoi(v[2])));
+}
+
+void ParseFace(std::string &str, std::vector<uint16_t> &vI, std::vector<uint16_t> &vN, std::vector<uint16_t> &vT) {
+    LOG(str)
     auto c = Split(str);
     for (auto i = 1; i < c.size(); ++i) {
-        auto v = c[i].find('/');
-        if (v != std::string::npos) {
-            auto s = std::string(c[i].begin(), c[i].begin() + v);
-            indices.emplace_back(static_cast<uint16_t>(std::stoi(s)));
+        auto v = Split(c[i], '/');
+        switch(v.size()) {
+            case 1:
+                ParseFaceV(v[0], vI);
+                break;
+            case 2:
+                ParseFaceVT(v, vI, vT);
+                break;
+            case 3:
+                v[1].empty() ? ParseFaceVN(v, vI, vN) : ParseFaceVTN(v, vI, vT, vN);
+                break;
         }
     }
 }
@@ -65,7 +111,10 @@ void ConvertObj(std::filesystem::path filepath) {
     std::vector<float_t> vertices;
     std::vector<float_t> normals;
     std::vector<float_t> uvs;
-    std::vector<uint16_t> faces;
+
+    std::vector<uint16_t> indexV;
+    std::vector<uint16_t> indexT;
+    std::vector<uint16_t> indexN;
 
     std::ifstream reader(filepath);
     std::string str;
@@ -73,7 +122,7 @@ void ConvertObj(std::filesystem::path filepath) {
         std::getline(reader, str);
         switch (str[0]) {
             case 'f':
-                ParseFace(str, faces);
+                ParseFace(str, indexV, indexN, indexT);
                 break;
             case 'v':
                 switch(str[1]) {
@@ -86,12 +135,13 @@ void ConvertObj(std::filesystem::path filepath) {
                     case 'n':
                         ParseVertex(str, normals);
                         break;
-                    case 'p':
+                    default:
                         // Not handled
                         break;
                 }
                 break;
             default:
+                // Not handled
                 continue;
         }   
     }
@@ -101,20 +151,30 @@ void ConvertObj(std::filesystem::path filepath) {
     // Write header
     writer.write("MOBJ", 4);
 
-    auto vx = SplitUint16(vertices.size());
-    auto nx = SplitUint16(normals.size());
-    auto tx = SplitUint16(uvs.size());
-    auto fx = SplitUint16(faces.size());
+    auto vx = SplitUint16(static_cast<uint16_t>(vertices.size()));
+    auto nx = SplitUint16(static_cast<uint16_t>(normals.size()));
+    auto tx = SplitUint16(static_cast<uint16_t>(uvs.size()));
+
+    auto fv = SplitUint16(static_cast<uint16_t>(indexV.size()));
+    auto ft = SplitUint16(static_cast<uint16_t>(indexT.size()));
+    auto fn = SplitUint16(static_cast<uint16_t>(indexN.size()));
 
     writer << vx[0] << vx[1];
     writer << tx[0] << tx[1];
     writer << nx[0] << nx[1];
-    writer << fx[0] << fx[1];
+
+    writer << fv[0] << fv[1];
+    writer << ft[0] << fv[1];
+    writer << fn[0] << fv[1];
 
     for (auto v : vertices) { auto u = SplitFloat(v); writer << u[0] << u[1] << u[2] << u[3]; }
     for (auto v : uvs) { auto u = SplitFloat(v); writer << u[0] << u[1] << u[2] << u[3]; }
     for (auto v : normals) { auto u = SplitFloat(v); writer << u[0] << u[1] << u[2] << u[3]; }
-    for (auto v : faces) {auto u = SplitFloat(v); writer << u[0] << u[1] << u[2] << u[3]; }
+
+    for (auto v : indexV) {auto u = SplitFloat(v); writer << u[0] << u[1] << u[2] << u[3]; }
+    for (auto v : indexT) {auto u = SplitFloat(v); writer << u[0] << u[1] << u[2] << u[3]; }
+    for (auto v : indexN) {auto u = SplitFloat(v); writer << u[0] << u[1] << u[2] << u[3]; }
+
     writer.close();
     std::cout << "Converted '" << filepath.filename().string() << "'" << std::endl;
 }
