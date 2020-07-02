@@ -6,9 +6,11 @@ target_include_directories(libMiniOBJ INTERFACE
 install(TARGETS libMiniOBJ)
 
 
-if (${MINI_BUILD_MINIFIER})
+if (MINIOBJ_BUILD_MINFIER)
+    message("Building Minifier")
     FILE(GLOB_RECURSE SOURCES src/*.cpp)
     add_executable(miniOBJ ${SOURCES})
+    target_include_directories(miniOBJ PRIVATE include)
     target_link_libraries(miniOBJ libMiniOBJ)
 
     set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
